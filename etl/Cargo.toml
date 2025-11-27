@@ -17,6 +17,7 @@ etl-config = { workspace = true }
 etl-postgres = { workspace = true, features = ["tokio", "replication"] }
 
 byteorder = { workspace = true }
+derive_more = { workspace = true, features = ["try_into"] }
 bytes = { workspace = true }
 chrono = { workspace = true }
 const-oid = { workspace = true, default-features = false }
@@ -40,6 +41,7 @@ tokio-postgres = { workspace = true, features = [
 ] }
 tokio-rustls = { workspace = true, default-features = false }
 tracing = { workspace = true, default-features = true }
+trait-gen = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 x509-cert = { workspace = true, default-features = false }
 
