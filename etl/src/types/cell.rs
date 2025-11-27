@@ -1,4 +1,6 @@
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+use derive_more::TryInto;
+use trait_gen::trait_gen;
 use uuid::Uuid;
 
 use crate::bail;
@@ -32,43 +34,49 @@ macro_rules! convert_array_variant {
 ///
 /// The enum is designed to preserve type information and enable efficient conversion
 /// to destination formats while maintaining data fidelity.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// This enum derives [`TryInto`] to enable direct extraction of inner values.
+/// Use `cell.try_into()` to extract the underlying type (e.g., `let value: i32 = cell.try_into()?`).
+#[derive(Debug, Clone, PartialEq, TryInto)]
+#[try_into(owned, ref, ref_mut)]
 pub enum Cell {
-    /// Represents a NULL database value
+    /// Represents a NULL database value.
+    #[try_into(ignore)]
     Null,
-    /// Boolean value (true/false)
+    /// Boolean value (true/false).
     Bool(bool),
-    /// Text or character data
+    /// Text or character data.
     String(String),
-    /// 16-bit signed integer
+    /// 16-bit signed integer.
     I16(i16),
-    /// 32-bit signed integer
+    /// 32-bit signed integer.
     I32(i32),
-    /// 32-bit unsigned integer
+    /// 32-bit unsigned integer.
     U32(u32),
-    /// 64-bit signed integer
+    /// 64-bit signed integer.
     I64(i64),
-    /// 32-bit floating point number
+    /// 32-bit floating point number.
     F32(f32),
-    /// 64-bit floating point number
+    /// 64-bit floating point number.
     F64(f64),
-    /// Postgres NUMERIC/DECIMAL type with arbitrary precision
+    /// Postgres NUMERIC/DECIMAL type with arbitrary precision.
     Numeric(PgNumeric),
-    /// Date without time information
+    /// Date without time information.
     Date(NaiveDate),
-    /// Time without date information
+    /// Time without date information.
     Time(NaiveTime),
-    /// Timestamp without timezone information
+    /// Timestamp without timezone information.
     Timestamp(NaiveDateTime),
-    /// Timestamp with timezone information in UTC
+    /// Timestamp with timezone information in UTC.
     TimestampTz(DateTime<Utc>),
-    /// UUID (Universally Unique Identifier)
+    /// UUID (Universally Unique Identifier).
     Uuid(Uuid),
-    /// JSON data as parsed value
+    /// JSON data as parsed value.
     Json(serde_json::Value),
-    /// Raw byte data
+    /// Raw byte data.
     Bytes(Vec<u8>),
-    /// Array of values with nullable elements
+    /// Array of values with nullable elements.
+    #[try_into(ignore)]
     Array(ArrayCell),
 }
 
@@ -108,39 +116,43 @@ impl Cell {
 ///
 /// This type is used internally during data conversion and can be converted to
 /// [`ArrayCellNonOptional`] for destinations that don't support nullable array elements.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// This enum derives [`TryInto`] to enable direct extraction of inner vectors.
+/// Use `array_cell.try_into()` to extract the underlying `Vec<Option<T>>`.
+#[derive(Debug, Clone, PartialEq, TryInto)]
+#[try_into(owned, ref, ref_mut)]
 pub enum ArrayCell {
-    /// Array of nullable boolean values
+    /// Array of nullable boolean values.
     Bool(Vec<Option<bool>>),
-    /// Array of nullable string values
+    /// Array of nullable string values.
     String(Vec<Option<String>>),
-    /// Array of nullable 16-bit integers
+    /// Array of nullable 16-bit integers.
     I16(Vec<Option<i16>>),
-    /// Array of nullable 32-bit integers
+    /// Array of nullable 32-bit integers.
     I32(Vec<Option<i32>>),
-    /// Array of nullable 32-bit unsigned integers
+    /// Array of nullable 32-bit unsigned integers.
     U32(Vec<Option<u32>>),
-    /// Array of nullable 64-bit integers
+    /// Array of nullable 64-bit integers.
     I64(Vec<Option<i64>>),
-    /// Array of nullable 32-bit floats
+    /// Array of nullable 32-bit floats.
     F32(Vec<Option<f32>>),
-    /// Array of nullable 64-bit floats
+    /// Array of nullable 64-bit floats.
     F64(Vec<Option<f64>>),
-    /// Array of nullable Postgres numeric values
+    /// Array of nullable Postgres numeric values.
     Numeric(Vec<Option<PgNumeric>>),
-    /// Array of nullable dates
+    /// Array of nullable dates.
     Date(Vec<Option<NaiveDate>>),
-    /// Array of nullable times
+    /// Array of nullable times.
     Time(Vec<Option<NaiveTime>>),
-    /// Array of nullable timestamps
+    /// Array of nullable timestamps.
     Timestamp(Vec<Option<NaiveDateTime>>),
-    /// Array of nullable timestamps with timezone
+    /// Array of nullable timestamps with timezone.
     TimestampTz(Vec<Option<DateTime<Utc>>>),
-    /// Array of nullable UUIDs
+    /// Array of nullable UUIDs.
     Uuid(Vec<Option<Uuid>>),
-    /// Array of nullable JSON values
+    /// Array of nullable JSON values.
     Json(Vec<Option<serde_json::Value>>),
-    /// Array of nullable byte arrays
+    /// Array of nullable byte arrays.
     Bytes(Vec<Option<Vec<u8>>>),
 }
 
@@ -315,6 +327,56 @@ impl ArrayCellNonOptional {
     }
 }
 
+// TryFrom<Cell> for Option<T> implementations.
+// These handle Cell::Null by returning None, and extract the inner value otherwise.
+#[trait_gen(T -> bool, String, i16, i32, u32, i64, f32, f64, PgNumeric, NaiveDate, NaiveTime, NaiveDateTime, DateTime<Utc>, Uuid, serde_json::Value, Vec<u8>)]
+impl TryFrom<Cell> for Option<T> {
+    type Error = EtlError;
+
+    fn try_from(cell: Cell) -> Result<Self, Self::Error> {
+        match cell {
+            Cell::Null => Ok(None),
+            other => {
+                let value: T = other.try_into().map_err(|e| {
+                    EtlError::from((
+                        ErrorKind::ConversionError,
+                        "Cell type mismatch",
+                        format!("Failed to convert Cell to expected type: {e}"),
+                    ))
+                })?;
+                Ok(Some(value))
+            }
+        }
+    }
+}
+
+// TryFrom<Cell> for Vec<Option<T>> implementations.
+// These extract array contents from Cell::Array variants.
+#[trait_gen(T -> bool, String, i16, i32, u32, i64, f32, f64, PgNumeric, NaiveDate, NaiveTime, NaiveDateTime, DateTime<Utc>, Uuid, serde_json::Value, Vec<u8>)]
+impl TryFrom<Cell> for Vec<Option<T>> {
+    type Error = EtlError;
+
+    fn try_from(cell: Cell) -> Result<Self, Self::Error> {
+        match cell {
+            Cell::Array(array_cell) => {
+                let vec: Vec<Option<T>> = array_cell.try_into().map_err(|e| {
+                    EtlError::from((
+                        ErrorKind::ConversionError,
+                        "ArrayCell type mismatch",
+                        format!("Failed to convert ArrayCell to expected type: {e}"),
+                    ))
+                })?;
+                Ok(vec)
+            }
+            _ => bail!(
+                ErrorKind::ConversionError,
+                "Expected Cell::Array",
+                "Cannot extract Vec from non-array Cell variant"
+            ),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -411,7 +473,7 @@ mod tests {
 
     #[test]
     fn complex_array_conversions() {
-        // Test complex array type conversions
+        // Test complex array type conversions.
         let mixed_types = vec![
             ArrayCell::Bool(vec![Some(true), Some(false)]),
             ArrayCell::String(vec![Some("hello".to_string()), Some("world".to_string())]),
@@ -421,16 +483,121 @@ mod tests {
         for array_cell in mixed_types {
             let cell = Cell::Array(array_cell);
 
-            // Test that we can convert to CellNonOptional if no nulls are present
+            // Test that we can convert to CellNonOptional if no nulls are present.
             let non_opt_result = CellNonOptional::try_from(cell);
 
-            // Some will succeed (Bool, String, I32 without nulls, Null)
-            // Others may fail if they contain nulls
+            // Some will succeed (Bool, String, I32 without nulls, Null).
+            // Others may fail if they contain nulls.
             if let Ok(non_opt) = non_opt_result {
-                // Test that clear works on the result
+                // Test that clear works on the result.
                 let mut non_opt_clone = non_opt.clone();
                 non_opt_clone.clear();
             }
         }
+    }
+
+    #[test]
+    fn try_from_cell_to_primitive() {
+        // Test extracting primitive types from Cell.
+        let cell = Cell::I32(42);
+        let value: i32 = cell.try_into().unwrap();
+        assert_eq!(value, 42);
+
+        let cell = Cell::String("hello".to_string());
+        let value: String = cell.try_into().unwrap();
+        assert_eq!(value, "hello");
+
+        let cell = Cell::Bool(true);
+        let value: bool = cell.try_into().unwrap();
+        assert!(value);
+
+        let cell = Cell::F64(1.5);
+        let value: f64 = cell.try_into().unwrap();
+        assert!((value - 1.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn try_from_cell_to_option() {
+        // Test extracting Option<T> from Cell.
+        let cell = Cell::I32(42);
+        let value: Option<i32> = cell.try_into().unwrap();
+        assert_eq!(value, Some(42));
+
+        // Test that Null converts to None.
+        let cell = Cell::Null;
+        let value: Option<i32> = cell.try_into().unwrap();
+        assert_eq!(value, None);
+
+        let cell = Cell::String("test".to_string());
+        let value: Option<String> = cell.try_into().unwrap();
+        assert_eq!(value, Some("test".to_string()));
+
+        let cell = Cell::Null;
+        let value: Option<String> = cell.try_into().unwrap();
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn try_from_cell_type_mismatch() {
+        // Test that type mismatches produce errors.
+        let cell = Cell::String("hello".to_string());
+        let result: Result<i32, _> = cell.try_into();
+        assert!(result.is_err());
+
+        let cell = Cell::I32(42);
+        let result: Result<String, _> = cell.try_into();
+        assert!(result.is_err());
+
+        let cell = Cell::Bool(true);
+        let result: Result<f64, _> = cell.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_cell_option_type_mismatch() {
+        // Test that Option<T> conversions fail on type mismatch (non-Null).
+        let cell = Cell::String("hello".to_string());
+        let result: Result<Option<i32>, _> = cell.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_cell_to_array_vec() {
+        // Test extracting Vec<Option<T>> from Cell::Array.
+        let cell = Cell::Array(ArrayCell::I32(vec![Some(1), Some(2), None, Some(4)]));
+        let values: Vec<Option<i32>> = cell.try_into().unwrap();
+        assert_eq!(values, vec![Some(1), Some(2), None, Some(4)]);
+
+        let cell = Cell::Array(ArrayCell::String(vec![
+            Some("a".to_string()),
+            None,
+            Some("c".to_string()),
+        ]));
+        let values: Vec<Option<String>> = cell.try_into().unwrap();
+        assert_eq!(
+            values,
+            vec![Some("a".to_string()), None, Some("c".to_string())]
+        );
+    }
+
+    #[test]
+    fn try_from_cell_to_array_vec_type_mismatch() {
+        // Test that array extraction fails on type mismatch.
+        let cell = Cell::Array(ArrayCell::I32(vec![Some(1), Some(2)]));
+        let result: Result<Vec<Option<String>>, _> = cell.try_into();
+        assert!(result.is_err());
+
+        // Test that non-array cells fail.
+        let cell = Cell::I32(42);
+        let result: Result<Vec<Option<i32>>, _> = cell.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_array_cell_to_vec() {
+        // Test extracting Vec<Option<T>> directly from ArrayCell.
+        let array_cell = ArrayCell::Bool(vec![Some(true), None, Some(false)]);
+        let values: Vec<Option<bool>> = array_cell.try_into().unwrap();
+        assert_eq!(values, vec![Some(true), None, Some(false)]);
     }
 }
