@@ -1,3 +1,7 @@
+# Make the same forked changes from pg_replicate onto this repo
+
+Review ../pg_replicate/FORK_CHANGES.diff as a reference.
+
 ## Theme 1: Cell Type Conversion Utilities
 
 ### Changes in pg_replicate
