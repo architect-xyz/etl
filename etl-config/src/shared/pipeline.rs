@@ -4,6 +4,18 @@ use crate::shared::{
     PgConnectionConfig, PgConnectionConfigWithoutSecrets, ValidationError, batch::BatchConfig,
 };
 
+/// Default prefix for replication slot names.
+pub const DEFAULT_SLOT_PREFIX: &str = "supabase_etl";
+
+/// Maximum length for a custom slot prefix.
+/// PostgreSQL limits slot names to 63 bytes. With the longest suffix pattern
+/// `_table_sync_{max_u64}_{max_u32}` = 40 chars, we allow prefixes up to 20 chars.
+pub const MAX_SLOT_PREFIX_LENGTH: usize = 20;
+
+fn default_slot_prefix() -> String {
+    DEFAULT_SLOT_PREFIX.to_string()
+}
+
 /// Configuration for an ETL pipeline.
 ///
 /// Contains all settings required to run a replication pipeline including
@@ -31,6 +43,11 @@ pub struct PipelineConfig {
     pub table_error_retry_max_attempts: u32,
     /// Maximum number of table sync workers that can run at a time
     pub max_table_sync_workers: u16,
+    /// Custom prefix for replication slot names. Defaults to "supabase_etl".
+    /// Apply slots will be named: `{slot_prefix}_apply_{pipeline_id}`
+    /// Table sync slots will be named: `{slot_prefix}_table_sync_{pipeline_id}_{table_id}`
+    #[serde(default = "default_slot_prefix")]
+    pub slot_prefix: String,
 }
 
 impl PipelineConfig {
@@ -46,6 +63,17 @@ impl PipelineConfig {
 
         if self.table_error_retry_max_attempts == 0 {
             return Err(ValidationError::TableErrorRetryMaxAttemptsZero);
+        }
+
+        if self.slot_prefix.is_empty() {
+            return Err(ValidationError::SlotPrefixEmpty);
+        }
+
+        if self.slot_prefix.len() > MAX_SLOT_PREFIX_LENGTH {
+            return Err(ValidationError::SlotPrefixTooLong {
+                max_length: MAX_SLOT_PREFIX_LENGTH,
+                actual_length: self.slot_prefix.len(),
+            });
         }
 
         Ok(())
@@ -75,6 +103,9 @@ pub struct PipelineConfigWithoutSecrets {
     pub table_error_retry_max_attempts: u32,
     /// Maximum number of table sync workers that can run at a time
     pub max_table_sync_workers: u16,
+    /// Custom prefix for replication slot names.
+    #[serde(default = "default_slot_prefix")]
+    pub slot_prefix: String,
 }
 
 impl From<PipelineConfig> for PipelineConfigWithoutSecrets {
@@ -87,6 +118,7 @@ impl From<PipelineConfig> for PipelineConfigWithoutSecrets {
             table_error_retry_delay_ms: value.table_error_retry_delay_ms,
             table_error_retry_max_attempts: value.table_error_retry_max_attempts,
             max_table_sync_workers: value.max_table_sync_workers,
+            slot_prefix: value.slot_prefix,
         }
     }
 }

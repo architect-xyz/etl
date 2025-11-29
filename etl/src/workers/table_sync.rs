@@ -637,6 +637,9 @@ where
             }
         };
 
+        // Save slot_prefix before self.config is moved
+        let slot_prefix = self.config.slot_prefix.clone();
+
         let result = start_apply_loop(
             self.pipeline_id,
             start_lsn,
@@ -659,7 +662,7 @@ where
             // an automatic cleanup mechanism is that it would introduce performance overhead,
             // and we expect this call to fail only rarely.
             let slot_name: String =
-                EtlReplicationSlot::for_table_sync_worker(self.pipeline_id, self.table_id)
+                EtlReplicationSlot::for_table_sync_worker(self.pipeline_id, self.table_id, slot_prefix)
                     .try_into()?;
             let result = tokio::time::timeout(
                 MAX_DELETE_SLOT_WAIT,

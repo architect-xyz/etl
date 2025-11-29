@@ -463,14 +463,20 @@ async fn table_copy_replicates_existing_data() {
     assert_eq!(age_sum, expected_age_sum);
 
     // Check that the replication slots for the two tables have been removed.
-    let users_replication_slot: String =
-        EtlReplicationSlot::for_table_sync_worker(pipeline_id, database_schema.users_schema().id)
-            .try_into()
-            .unwrap();
-    let orders_replication_slot: String =
-        EtlReplicationSlot::for_table_sync_worker(pipeline_id, database_schema.orders_schema().id)
-            .try_into()
-            .unwrap();
+    let users_replication_slot: String = EtlReplicationSlot::for_table_sync_worker(
+        pipeline_id,
+        database_schema.users_schema().id,
+        etl_config::shared::DEFAULT_SLOT_PREFIX,
+    )
+    .try_into()
+    .unwrap();
+    let orders_replication_slot: String = EtlReplicationSlot::for_table_sync_worker(
+        pipeline_id,
+        database_schema.orders_schema().id,
+        etl_config::shared::DEFAULT_SLOT_PREFIX,
+    )
+    .try_into()
+    .unwrap();
     assert!(
         !database
             .replication_slot_exists(&users_replication_slot)
@@ -631,14 +637,20 @@ async fn table_copy_and_sync_streams_new_data() {
     assert_events_equal(orders_inserts, &expected_orders_inserts);
 
     // Check that the replication slots for the two tables have been removed.
-    let users_replication_slot: String =
-        EtlReplicationSlot::for_table_sync_worker(pipeline_id, database_schema.users_schema().id)
-            .try_into()
-            .unwrap();
-    let orders_replication_slot: String =
-        EtlReplicationSlot::for_table_sync_worker(pipeline_id, database_schema.orders_schema().id)
-            .try_into()
-            .unwrap();
+    let users_replication_slot: String = EtlReplicationSlot::for_table_sync_worker(
+        pipeline_id,
+        database_schema.users_schema().id,
+        etl_config::shared::DEFAULT_SLOT_PREFIX,
+    )
+    .try_into()
+    .unwrap();
+    let orders_replication_slot: String = EtlReplicationSlot::for_table_sync_worker(
+        pipeline_id,
+        database_schema.orders_schema().id,
+        etl_config::shared::DEFAULT_SLOT_PREFIX,
+    )
+    .try_into()
+    .unwrap();
     assert!(
         !database
             .replication_slot_exists(&users_replication_slot)

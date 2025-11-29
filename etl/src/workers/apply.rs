@@ -135,7 +135,9 @@ where
             publication_name = self.config.publication_name
         );
         let apply_worker = async move {
-            let start_lsn = get_start_lsn(self.pipeline_id, &self.replication_client).await?;
+            let start_lsn =
+                get_start_lsn(self.pipeline_id, &self.config.slot_prefix, &self.replication_client)
+                    .await?;
 
             // We create the signal used to notify the apply worker that it should force syncing tables.
             let (force_syncing_tables_tx, force_syncing_tables_rx) = create_signal();
@@ -183,9 +185,11 @@ where
 /// that tracks the apply worker's progress and prevents WAL deletion of unreplicated data.
 async fn get_start_lsn(
     pipeline_id: PipelineId,
+    slot_prefix: &str,
     replication_client: &PgReplicationClient,
 ) -> EtlResult<PgLsn> {
-    let slot_name: String = EtlReplicationSlot::for_apply_worker(pipeline_id).try_into()?;
+    let slot_name: String =
+        EtlReplicationSlot::for_apply_worker(pipeline_id, slot_prefix.to_owned()).try_into()?;
 
     // TODO: validate that we only create the slot when we first start replication which
     //  means when all tables are in the Init state. In any other case we should raise an

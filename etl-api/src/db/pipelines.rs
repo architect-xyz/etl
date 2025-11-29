@@ -265,8 +265,13 @@ pub async fn delete_pipeline_cascading(
     if let Some(table_ids) = table_ids {
         // If we succeeded to commit both transactions, we are safe to delete the slots. The reason for
         // not deleting slots in the transaction is that `pg_drop_replication_slot(...)` is not transactional.
-        slots::delete_pipeline_replication_slots(&source_pool, pipeline.id as u64, &table_ids)
-            .await?;
+        slots::delete_pipeline_replication_slots(
+            &source_pool,
+            pipeline.id as u64,
+            &table_ids,
+            &pipeline.config.slot_prefix,
+        )
+        .await?;
     }
 
     Ok(())

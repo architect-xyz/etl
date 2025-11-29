@@ -1125,6 +1125,7 @@ mod tests {
                 table_error_retry_delay_ms: 500,
                 table_error_retry_max_attempts: 3,
                 max_table_sync_workers: 4,
+                slot_prefix: "supabase_etl".to_string(),
             },
             sentry: None,
             supabase: None,

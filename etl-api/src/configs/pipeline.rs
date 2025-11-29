@@ -1,4 +1,6 @@
-use etl_config::shared::{BatchConfig, PgConnectionConfig, PipelineConfig};
+use etl_config::shared::{
+    BatchConfig, DEFAULT_SLOT_PREFIX, PgConnectionConfig, PipelineConfig,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -12,6 +14,10 @@ const DEFAULT_MAX_TABLE_SYNC_WORKERS: u16 = 4;
 
 const fn default_table_error_retry_max_attempts() -> u32 {
     DEFAULT_TABLE_ERROR_RETRY_MAX_ATTEMPTS
+}
+
+fn default_slot_prefix() -> String {
+    DEFAULT_SLOT_PREFIX.to_string()
 }
 
 /// Batch processing configuration for pipelines.
@@ -42,6 +48,10 @@ pub struct FullApiPipelineConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_table_sync_workers: Option<u16>,
     pub log_level: Option<LogLevel>,
+    /// Custom prefix for replication slot names. Defaults to "supabase_etl".
+    #[schema(example = "supabase_etl")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_prefix: Option<String>,
 }
 
 impl From<StoredPipelineConfig> for FullApiPipelineConfig {
@@ -56,6 +66,7 @@ impl From<StoredPipelineConfig> for FullApiPipelineConfig {
             table_error_retry_max_attempts: Some(value.table_error_retry_max_attempts),
             max_table_sync_workers: Some(value.max_table_sync_workers),
             log_level: value.log_level,
+            slot_prefix: Some(value.slot_prefix),
         }
     }
 }
@@ -79,6 +90,10 @@ pub struct PartialApiPipelineConfig {
     pub max_table_sync_workers: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<LogLevel>,
+    /// Custom prefix for replication slot names.
+    #[schema(example = "supabase_etl")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +105,9 @@ pub struct StoredPipelineConfig {
     pub table_error_retry_max_attempts: u32,
     pub max_table_sync_workers: u16,
     pub log_level: Option<LogLevel>,
+    /// Custom prefix for replication slot names.
+    #[serde(default = "default_slot_prefix")]
+    pub slot_prefix: String,
 }
 
 impl StoredPipelineConfig {
@@ -106,6 +124,7 @@ impl StoredPipelineConfig {
             table_error_retry_delay_ms: self.table_error_retry_delay_ms,
             table_error_retry_max_attempts: self.table_error_retry_max_attempts,
             max_table_sync_workers: self.max_table_sync_workers,
+            slot_prefix: self.slot_prefix,
         }
     }
 
@@ -133,6 +152,10 @@ impl StoredPipelineConfig {
 
         if let Some(value) = partial.max_table_sync_workers {
             self.max_table_sync_workers = value;
+        }
+
+        if let Some(value) = partial.slot_prefix {
+            self.slot_prefix = value;
         }
 
         self.log_level = partial.log_level
@@ -167,6 +190,9 @@ impl From<FullApiPipelineConfig> for StoredPipelineConfig {
                 .max_table_sync_workers
                 .unwrap_or(DEFAULT_MAX_TABLE_SYNC_WORKERS),
             log_level: value.log_level,
+            slot_prefix: value
+                .slot_prefix
+                .unwrap_or_else(|| DEFAULT_SLOT_PREFIX.to_string()),
         }
     }
 }
@@ -188,6 +214,7 @@ mod tests {
             table_error_retry_max_attempts: 7,
             max_table_sync_workers: 4,
             log_level: None,
+            slot_prefix: "custom_prefix".to_string(),
         };
 
         let json = serde_json::to_string(&config).unwrap();
@@ -207,6 +234,7 @@ mod tests {
             config.max_table_sync_workers,
             deserialized.max_table_sync_workers
         );
+        assert_eq!(config.slot_prefix, deserialized.slot_prefix);
     }
 
     #[test]
@@ -218,12 +246,14 @@ mod tests {
             table_error_retry_max_attempts: None,
             max_table_sync_workers: None,
             log_level: Some(LogLevel::Debug),
+            slot_prefix: Some("my_prefix".to_string()),
         };
 
         let stored: StoredPipelineConfig = full_config.clone().into();
         let back_to_full: FullApiPipelineConfig = stored.into();
 
         assert_eq!(full_config.publication_name, back_to_full.publication_name);
+        assert_eq!(full_config.slot_prefix, back_to_full.slot_prefix);
     }
 
     #[test]
@@ -235,6 +265,7 @@ mod tests {
             table_error_retry_max_attempts: None,
             max_table_sync_workers: None,
             log_level: None,
+            slot_prefix: None,
         };
 
         let stored: StoredPipelineConfig = full_config.into();
@@ -253,6 +284,7 @@ mod tests {
             stored.max_table_sync_workers,
             DEFAULT_MAX_TABLE_SYNC_WORKERS
         );
+        assert_eq!(stored.slot_prefix, DEFAULT_SLOT_PREFIX);
     }
 
     #[test]
@@ -267,6 +299,7 @@ mod tests {
             table_error_retry_max_attempts: 3,
             max_table_sync_workers: 2,
             log_level: None,
+            slot_prefix: "old_prefix".to_string(),
         };
 
         let partial = PartialApiPipelineConfig {
@@ -279,6 +312,7 @@ mod tests {
             table_error_retry_max_attempts: Some(9),
             max_table_sync_workers: None,
             log_level: None,
+            slot_prefix: Some("new_prefix".to_string()),
         };
 
         stored.merge(partial);
@@ -289,5 +323,6 @@ mod tests {
         assert_eq!(stored.table_error_retry_delay_ms, 5000);
         assert_eq!(stored.table_error_retry_max_attempts, 9);
         assert_eq!(stored.max_table_sync_workers, 2);
+        assert_eq!(stored.slot_prefix, "new_prefix");
     }
 }

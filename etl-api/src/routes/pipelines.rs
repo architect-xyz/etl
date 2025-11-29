@@ -950,7 +950,9 @@ pub async fn get_pipeline_replication_status(
 
     // Fetch replication state for all tables in this pipeline
     let state_rows = state::get_table_replication_state_rows(&source_pool, pipeline_id).await?;
-    let mut lag_metrics = lag::get_pipeline_lag_metrics(&source_pool, pipeline_id as u64).await?;
+    let mut lag_metrics =
+        lag::get_pipeline_lag_metrics(&source_pool, pipeline_id as u64, &pipeline.config.slot_prefix)
+            .await?;
     let apply_lag = lag_metrics.apply.map(Into::into);
 
     // Convert database states to UI-friendly format and fetch table names

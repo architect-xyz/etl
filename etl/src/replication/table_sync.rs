@@ -121,7 +121,8 @@ where
     };
 
     let slot_name: String =
-        EtlReplicationSlot::for_table_sync_worker(pipeline_id, table_id).try_into()?;
+        EtlReplicationSlot::for_table_sync_worker(pipeline_id, table_id, config.slot_prefix.clone())
+            .try_into()?;
 
     // There are three phases in which the table can be in:
     // - `Init` -> this means that the table sync was never done, so we just perform it.

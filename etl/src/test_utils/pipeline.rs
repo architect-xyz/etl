@@ -1,4 +1,6 @@
-use etl_config::shared::{BatchConfig, PgConnectionConfig, PipelineConfig};
+use etl_config::shared::{
+    BatchConfig, DEFAULT_SLOT_PREFIX, PgConnectionConfig, PipelineConfig,
+};
 use uuid::Uuid;
 
 use crate::destination::Destination;
@@ -39,6 +41,7 @@ where
         table_error_retry_delay_ms: 1000,
         table_error_retry_max_attempts: 2,
         max_table_sync_workers: 1,
+        slot_prefix: DEFAULT_SLOT_PREFIX.to_string(),
     };
 
     Pipeline::new(config, store, destination)
@@ -69,6 +72,7 @@ where
         table_error_retry_delay_ms: 1000,
         table_error_retry_max_attempts: 5,
         max_table_sync_workers: 1,
+        slot_prefix: DEFAULT_SLOT_PREFIX.to_string(),
     };
 
     Pipeline::new(config, store, destination)

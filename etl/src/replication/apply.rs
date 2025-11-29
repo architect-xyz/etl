@@ -525,7 +525,7 @@ where
     // replication. At this point we assume that the slot already exists.
     let slot_name: String = hook
         .worker_type()
-        .build_etl_replication_slot(pipeline_id)
+        .build_etl_replication_slot(pipeline_id, config.slot_prefix.clone())
         .try_into()?;
 
     // We start the logical replication stream with the supplied parameters at a given lsn. That

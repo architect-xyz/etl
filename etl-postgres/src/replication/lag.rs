@@ -47,11 +47,13 @@ struct SlotLagRow {
 pub async fn get_pipeline_lag_metrics(
     pool: &PgPool,
     pipeline_id: u64,
+    slot_prefix: &str,
 ) -> sqlx::Result<PipelineLagMetrics> {
-    let Ok(apply_prefix) = EtlReplicationSlot::apply_prefix(pipeline_id) else {
+    let Ok(apply_prefix) = EtlReplicationSlot::apply_prefix(pipeline_id, slot_prefix) else {
         return Ok(PipelineLagMetrics::default());
     };
-    let Ok(table_sync_prefix) = EtlReplicationSlot::table_sync_prefix(pipeline_id) else {
+    let Ok(table_sync_prefix) = EtlReplicationSlot::table_sync_prefix(pipeline_id, slot_prefix)
+    else {
         return Ok(PipelineLagMetrics::default());
     };
 
@@ -89,12 +91,14 @@ pub async fn get_pipeline_lag_metrics(
         match EtlReplicationSlot::try_from(row.slot_name.as_str()) {
             Ok(EtlReplicationSlot::Apply {
                 pipeline_id: slot_pipeline_id,
+                ..
             }) if slot_pipeline_id == pipeline_id => {
                 metrics.apply = Some(slot_lag_metrics);
             }
             Ok(EtlReplicationSlot::TableSync {
                 pipeline_id: slot_pipeline_id,
                 table_id,
+                ..
             }) if slot_pipeline_id == pipeline_id => {
                 metrics.table_sync.insert(table_id, slot_lag_metrics);
             }

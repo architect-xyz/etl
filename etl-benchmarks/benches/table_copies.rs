@@ -335,6 +335,7 @@ async fn start_pipeline(args: RunArgs) -> Result<(), Box<dyn Error>> {
         table_error_retry_delay_ms: 10000,
         table_error_retry_max_attempts: 5,
         max_table_sync_workers: args.max_table_sync_workers,
+        slot_prefix: "supabase_etl".to_string(),
     };
 
     // Create the appropriate destination based on the argument

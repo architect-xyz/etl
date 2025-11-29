@@ -238,6 +238,7 @@ pub mod pipelines {
             table_error_retry_max_attempts: Some(5),
             max_table_sync_workers: Some(2),
             log_level: Some(LogLevel::Info),
+            slot_prefix: None,
         }
     }
 
@@ -253,6 +254,7 @@ pub mod pipelines {
             table_error_retry_max_attempts: Some(10),
             max_table_sync_workers: Some(4),
             log_level: Some(LogLevel::Info),
+            slot_prefix: None,
         }
     }
 
@@ -277,6 +279,7 @@ pub mod pipelines {
                 table_error_retry_max_attempts: None,
                 max_table_sync_workers: None,
                 log_level: None,
+                slot_prefix: None,
             },
             ConfigUpdateType::TableErrorRetryDelayMs(table_error_retry_delay_ms) => {
                 PartialApiPipelineConfig {
@@ -286,6 +289,7 @@ pub mod pipelines {
                     table_error_retry_max_attempts: None,
                     max_table_sync_workers: None,
                     log_level: None,
+                    slot_prefix: None,
                 }
             }
             ConfigUpdateType::TableErrorRetryMaxAttempts(max_attempts) => {
@@ -296,6 +300,7 @@ pub mod pipelines {
                     table_error_retry_max_attempts: Some(max_attempts),
                     max_table_sync_workers: None,
                     log_level: None,
+                    slot_prefix: None,
                 }
             }
             ConfigUpdateType::MaxTableSyncWorkers(n) => PartialApiPipelineConfig {
@@ -305,6 +310,7 @@ pub mod pipelines {
                 table_error_retry_max_attempts: None,
                 max_table_sync_workers: Some(n),
                 log_level: None,
+                slot_prefix: None,
             },
             ConfigUpdateType::LogLevel(log_level) => PartialApiPipelineConfig {
                 publication_name: None,
@@ -313,6 +319,7 @@ pub mod pipelines {
                 table_error_retry_max_attempts: None,
                 max_table_sync_workers: None,
                 log_level,
+                slot_prefix: None,
             },
         }
     }
@@ -329,6 +336,7 @@ pub mod pipelines {
             table_error_retry_max_attempts: Some(6),
             max_table_sync_workers: Some(8),
             log_level: None,
+            slot_prefix: None,
         }
     }
 
