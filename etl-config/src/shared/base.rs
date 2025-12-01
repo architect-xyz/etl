@@ -12,4 +12,10 @@ pub enum ValidationError {
     /// TLS is enabled but no trusted root certificates are provided.
     #[error("Invalid TLS config: `trusted_root_certs` must be set when `enabled` is true")]
     MissingTrustedRootCerts,
+    /// Slot prefix exceeds maximum length.
+    #[error("`slot_prefix` exceeds maximum length of {max_length} characters")]
+    SlotPrefixTooLong { max_length: usize },
+    /// Slot prefix is empty.
+    #[error("`slot_prefix` cannot be empty")]
+    SlotPrefixEmpty,
 }

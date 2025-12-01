@@ -165,6 +165,7 @@ async fn main_impl() -> Result<(), Box<dyn Error>> {
     // Create pipeline configuration with batching and retry settings
     let pipeline_config = PipelineConfig {
         id: 1, // Using a simple ID for the example
+        slot_prefix: None,
         publication_name: args.publication,
         pg_connection: pg_connection_config,
         batch: BatchConfig {

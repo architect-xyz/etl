@@ -1105,6 +1105,7 @@ mod tests {
             },
             pipeline: PipelineConfig {
                 id: 42,
+                slot_prefix: None,
                 publication_name: "all-pub".to_string(),
                 pg_connection: PgConnectionConfig {
                     host: "localhost".to_string(),

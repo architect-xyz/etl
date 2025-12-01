@@ -4,6 +4,12 @@ use crate::shared::{
     PgConnectionConfig, PgConnectionConfigWithoutSecrets, ValidationError, batch::BatchConfig,
 };
 
+/// Maximum length for a custom slot prefix.
+///
+/// PostgreSQL limits slot names to 63 bytes. With the longest suffix pattern
+/// `_table_sync_{max_u64}_{max_u32}` = 40 chars, we allow prefixes up to 20 chars.
+pub const MAX_SLOT_PREFIX_LENGTH: usize = 20;
+
 /// Configuration for an ETL pipeline.
 ///
 /// Contains all settings required to run a replication pipeline including
@@ -18,6 +24,11 @@ pub struct PipelineConfig {
     /// A pipeline id determines isolation between pipelines, in terms of replication slots and state
     /// store.
     pub id: u64,
+    /// Optional prefix to use for replication slots.
+    ///
+    /// Defaults to "supabase_etl".
+    #[serde(default)]
+    pub slot_prefix: Option<String>,
     /// Name of the Postgres publication to use for logical replication.
     pub publication_name: String,
     /// The connection configuration for the Postgres instance to which the pipeline connects for
@@ -48,6 +59,24 @@ impl PipelineConfig {
             return Err(ValidationError::TableErrorRetryMaxAttemptsZero);
         }
 
+        if self
+            .slot_prefix
+            .as_ref()
+            .is_some_and(|prefix| prefix.is_empty())
+        {
+            return Err(ValidationError::SlotPrefixEmpty);
+        }
+
+        if self
+            .slot_prefix
+            .as_ref()
+            .is_some_and(|prefix| prefix.len() > MAX_SLOT_PREFIX_LENGTH)
+        {
+            return Err(ValidationError::SlotPrefixTooLong {
+                max_length: MAX_SLOT_PREFIX_LENGTH,
+            });
+        }
+
         Ok(())
     }
 }
@@ -62,6 +91,11 @@ pub struct PipelineConfigWithoutSecrets {
     /// A pipeline id determines isolation between pipelines, in terms of replication slots and state
     /// store.
     pub id: u64,
+    /// Optional prefix to use for replication slots.
+    ///
+    /// Defaults to "supabase_etl".
+    #[serde(default)]
+    pub slot_prefix: Option<String>,
     /// Name of the Postgres publication to use for logical replication.
     pub publication_name: String,
     /// The connection configuration for the Postgres instance to which the pipeline connects for
@@ -81,6 +115,7 @@ impl From<PipelineConfig> for PipelineConfigWithoutSecrets {
     fn from(value: PipelineConfig) -> Self {
         PipelineConfigWithoutSecrets {
             id: value.id,
+            slot_prefix: value.slot_prefix,
             publication_name: value.publication_name,
             pg_connection: value.pg_connection.into(),
             batch: value.batch,

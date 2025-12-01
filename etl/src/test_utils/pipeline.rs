@@ -30,6 +30,7 @@ where
 {
     let config = PipelineConfig {
         id: pipeline_id,
+        slot_prefix: None,
         publication_name,
         pg_connection: pg_connection_config.clone(),
         batch: BatchConfig {
@@ -63,6 +64,7 @@ where
 
     let config = PipelineConfig {
         id: pipeline_id,
+        slot_prefix: None,
         publication_name,
         pg_connection: pg_connection_config.clone(),
         batch,
