@@ -75,6 +75,7 @@
 //!     // Configure the pipeline
 //!     let config = PipelineConfig {
 //!         id: 1,
+//!         slot_prefix: None,
 //!         publication_name: "my_publication".to_string(),
 //!         pg_connection: pg_config,
 //!         batch: BatchConfig { max_size: 1000, max_fill_ms: 5000 },
