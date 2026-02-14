@@ -170,6 +170,7 @@ where
     pub fn build(self) -> Pipeline<S, D> {
         let config = PipelineConfig {
             id: self.pipeline_id,
+            slot_prefix: None,
             publication_name: self.publication_name,
             pg_connection: self.pg_connection_config,
             batch: self.batch,

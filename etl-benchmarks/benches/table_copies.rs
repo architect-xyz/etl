@@ -324,6 +324,7 @@ async fn start_pipeline(args: RunArgs) -> Result<(), Box<dyn Error>> {
 
     let pipeline_config = PipelineConfig {
         id: 1,
+        slot_prefix: None,
         publication_name: args.publication_name,
         pg_connection: pg_connection_config,
         batch: BatchConfig {

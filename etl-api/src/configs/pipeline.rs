@@ -139,6 +139,7 @@ impl StoredPipelineConfig {
     ) -> PipelineConfig {
         PipelineConfig {
             id: pipeline_id,
+            slot_prefix: None,
             publication_name: self.publication_name,
             pg_connection: pg_connection_config,
             batch: self.batch,
